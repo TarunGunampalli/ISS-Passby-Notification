@@ -13,15 +13,14 @@ passes = 1
 
 def checkToday(target_date, time):
     time_diff = datetime.timestamp(target_date) - datetime.timestamp(date.today())
-    if time_diff < time and time_diff > 0:
-        return True;
-    else:
-        return False
+    return True if time_diff < time else False
 
 def get_risetime():
     response = requests.get("http://api.open-notify.org/iss-pass.json", params = {'lat':latitude, 'lon':longitude, 'alt':altitude, 'n':passes})
     response = json.loads(response.text)
     risetime = response['response'][0]['risetime']
+    #if (risetime < datetime.timestamp(datetime.today())):
+        #risetime += 12*60*60
     return risetime
 
 def get_duration():
@@ -42,8 +41,21 @@ def seconds_to_minutes(seconds):
     seconds %= 60
     return str(minutes) + " minutes and " + str(seconds) + " seconds"
 
+def send_notifications(date, risetime, duration_minutes):
+    if not checkToday(date, 3600):
+        print("1")
+        time.sleep(risetime - 3600 - datetime.timestamp(date.today()))
+        send_message("The ISS will pass next in 1 hour")
+    elif not checkToday(date, 300):
+        print("2")
+        time.sleep(risetime - 300 - datetime.timestamp(date.today()))
+        send_message("The ISS will pass next in 5 minutes")
+    else:
+        print("3")
+        time.sleep(risetime - datetime.timestamp(date.today()))
+        send_message("The ISS is currently passing over your location. It will be passing for " + duration_minutes)
+
 risetime = get_risetime()
-risetime = 1598597995
 duration = get_duration()
 duration_minutes = seconds_to_minutes(duration)
 date = datetime.fromtimestamp(risetime)
@@ -55,12 +67,9 @@ to_number = '+14692880626'
 client = Client(account_sid, auth_token)
 
 while True:
-    if not checkToday(date, 3600):
-        time.sleep(risetime - 3600 - datetime.timestamp(date.today()))
-        send_message("The ISS will pass next in 1 hour")
-    elif not checkToday(date, 300):
-        time.sleep(risetime - 300 - datetime.timestamp(date.today()))
-        send_message("The ISS will pass next in 5 minutes")
-    else:
-        time.sleep(risetime - datetime.timestamp(date.today()))
-        send_message("The ISS is currently passing over your location. It will be passing for " + duration_minutes)
+    send_notifications(date, risetime, duration_minutes)
+    time.sleep(5)
+    risetime = get_risetime()
+    duration = get_duration()
+    duration_minutes = seconds_to_minutes(duration)
+    date = datetime.fromtimestamp(risetime)
